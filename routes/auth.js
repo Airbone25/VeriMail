@@ -22,6 +22,7 @@ router.post('/signup', async (req, res) => {
                 where: { name: org_name }
             })
             let role = "MEMBER"
+            let status = "PENDING"
             if (!org) {
                 const defaultPlan = await tx.plan.findUnique({ where: { name: "Free" } })
                 if (!defaultPlan) throw new Error("No Default Plan")
@@ -33,12 +34,14 @@ router.post('/signup', async (req, res) => {
                     }
                 })
                 role = "OWNER"
+                status = "ACTIVE"
             }
             const user = await tx.user.create({
                 data: {
                     email: email,
                     password: hashPass,
                     role: role,
+                    status: status,
                     org_id: org.id
                 }
             })
@@ -48,12 +51,14 @@ router.post('/signup', async (req, res) => {
         const token = signToken({
             user_id: result.user.id,
             org_id: result.org.id,
-            role: result.role
+            role: result.user.role,
+            status: result.user.status
         })
 
         res.send({
-            message: "Signup Successful",
-            token: token
+            message: result.user.status === "PENDING" ? "Membership request sent. Waiting for approval." : "Signup Successful",
+            token: token,
+            status: result.user.status
         })
 
     } catch (error) {
@@ -74,12 +79,14 @@ router.post('/login', async (req, res) => {
         const token = signToken({
             user_id: currUser.id,
             org_id: currUser.org_id,
-            role: currUser.role
+            role: currUser.role,
+            status: currUser.status
         })
 
         res.json({
             message: "Login Successful",
-            token: token
+            token: token,
+            status: currUser.status
         })
     } catch (error) {
         console.error(error)
@@ -92,7 +99,7 @@ router.get('/me', verifyAuth, async (req, res) => {
         const result = await prisma.$transaction(async (tx) => {
             const data = await tx.user.findUnique({ 
                 where: { id: req.user.user_id }, 
-                select: { id: true, email: true, role: true ,org_id: true } 
+                select: { id: true, email: true, role: true ,org_id: true, status: true } 
             })
             if (!data) return res.json({ message: "User Not Found" })
             
@@ -108,6 +115,7 @@ router.get('/me', verifyAuth, async (req, res) => {
             id: result.data.id,
             email: result.data.email,
             role: result.data.role,
+            status: result.data.status,
             orgName: result.orgName.name
         })
     } catch (error) {

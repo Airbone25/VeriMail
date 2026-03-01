@@ -11,7 +11,8 @@ export function verifyAuth(req,res,next){
         req.user = {
             user_id: decoded.user_id,
             org_id: decoded.org_id,
-            role: decoded.role
+            role: decoded.role,
+            status: decoded.status
         }
         next()
     }catch(error){
@@ -26,6 +27,12 @@ export function orgScope(req,res,next){
 
 export function verifyOwner(req,res,next){
     if(req.user.role != "OWNER") return res.status(403).json({message: "Access Forbidden, OWNER access required"})
+    
+    next()
+}
+
+export function verifyActive(req,res,next){
+    if(req.user.status != "ACTIVE") return res.status(403).json({message: "Access Forbidden, User status is not ACTIVE"})
     
     next()
 }

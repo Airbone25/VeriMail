@@ -18,11 +18,18 @@ enum Role{
   MEMBER
 }
 
+enum UserStatus{
+  ACTIVE
+  PENDING
+  DECLINED
+}
+
 model User{
   id String @id @default(uuid())
   email String @unique
   password String
   role Role
+  status UserStatus @default(PENDING)
   org_id String
   organization Organization @relation(fields: [org_id], references: [id])
   created_at DateTime @default(now())
