@@ -8,14 +8,12 @@ const router = express.Router()
 
 router.post('/signup', async (req, res) => {
     const { email, password, org_name } = req.body
-    if (!email || !password || !org_name) return res.json({ message: "Missing Fields" })
+    if (!email || !password || !org_name) return res.status(400).json({ message: "Missing Fields" })
     try {
         const existingUser = await prisma.user.findUnique({ where: { email } })
-        if (existingUser) return res.json({ message: "User already exist!" })
+        if (existingUser) return res.status(409).json({ message: "User already exists!" })
 
         const hashPass = await bcrypt.hash(password, 10)
-
-        // const normOrg = org_name.trim().toLowerCase()
 
         const result = await prisma.$transaction(async (tx) => {
             let org = await tx.organization.findFirst({
@@ -55,7 +53,7 @@ router.post('/signup', async (req, res) => {
             status: result.user.status
         })
 
-        res.send({
+        res.status(201).json({
             message: result.user.status === "PENDING" ? "Membership request sent. Waiting for approval." : "Signup Successful",
             token: token,
             status: result.user.status
@@ -71,10 +69,10 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body
     try {
         const currUser = await prisma.user.findUnique({ where: { email: email } })
-        if (!currUser) return res.json({ message: "Cannot find user" })
+        if (!currUser) return res.status(401).json({ message: "Invalid email or password" })
 
         const isMatch = await bcrypt.compare(password, currUser.password)
-        if (!isMatch) return res.json({ message: "Wrong Password" })
+        if (!isMatch) return res.status(401).json({ message: "Invalid email or password" })
 
         const token = signToken({
             user_id: currUser.id,
