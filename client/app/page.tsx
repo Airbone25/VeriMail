@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import Footer from "@/components/footer";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -398,6 +399,8 @@ export default function HomePage() {
           </Section>
         </div>
       </section>
+
+      <Footer/>
       
     </div>
   );
