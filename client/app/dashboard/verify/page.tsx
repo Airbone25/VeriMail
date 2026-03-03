@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Search, ArrowLeft, ShieldCheck, Mail, Database, Ban } from "lucide-react";
+import { CheckCircle2, XCircle, Search, ArrowLeft, ShieldCheck, Mail, Database, Ban, AlertTriangle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export default function VerificationPlaygroundPage() {
@@ -17,7 +17,13 @@ export default function VerificationPlaygroundPage() {
   const mutation = useMutation({
     mutationFn: (email: string) => verifyApi.verifyEmail(email).then(res => res.data),
     onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Failed to verify email");
+      if (err.response?.status === 403) {
+        toast.error("Limit Reached", {
+          description: "You have reached your monthly verification limit."
+        });
+      } else {
+        toast.error(err.response?.data?.message || "Failed to verify email");
+      }
     },
   });
 
@@ -28,6 +34,8 @@ export default function VerificationPlaygroundPage() {
   };
 
   const result = mutation.data;
+  const error = mutation.error as any;
+  const isLimitReached = error?.response?.status === 403;
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-8">
@@ -45,7 +53,7 @@ export default function VerificationPlaygroundPage() {
           <CardTitle className="text-lg">Test an Email</CardTitle>
           <CardDescription>Enter an email address to see our verification engine in action.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <form onSubmit={handleVerify} className="flex gap-2">
             <div className="relative flex-1">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -54,9 +62,10 @@ export default function VerificationPlaygroundPage() {
                 className="pl-9 h-11"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLimitReached}
               />
             </div>
-            <Button type="submit" size="lg" disabled={mutation.isPending} className="gap-2 px-8">
+            <Button type="submit" size="lg" disabled={mutation.isPending || isLimitReached} className="gap-2 px-8">
               {mutation.isPending ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
@@ -65,10 +74,28 @@ export default function VerificationPlaygroundPage() {
               Verify
             </Button>
           </form>
+
+          {isLimitReached && (
+            <div className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-lg">
+                <div className="flex items-center gap-3 text-red-800">
+                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                    <div>
+                        <p className="text-sm font-semibold">Monthly Limit Reached</p>
+                        <p className="text-xs opacity-80">Please upgrade your plan to continue verifying emails.</p>
+                    </div>
+                </div>
+                <Link href="/dashboard/settings">
+                    <Button variant="destructive" size="sm" className="gap-1">
+                        Upgrade
+                        <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {result && (
+      {result && !isLimitReached && (
         <div className="space-y-6">
           <Card className={`border-2 ${result.deliverable ? 'border-emerald-500/20 bg-emerald-50/10' : 'border-red-500/20 bg-red-50/10'}`}>
             <CardContent className="pt-6">
