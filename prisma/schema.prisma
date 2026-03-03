@@ -42,6 +42,17 @@ model Organization{
   plan Plan @relation(fields: [plan_id], references: [id])
   Users User[]
   ApiKeys ApiKey[]
+  VerificationLogs VerificationLog[]
+  created_at DateTime @default(now())
+}
+
+model VerificationLog {
+  id        String   @id @default(uuid())
+  email     String
+  status    String
+  is_valid  Boolean  @default(false)
+  org_id    String
+  organization Organization @relation(fields: [org_id], references: [id])
   created_at DateTime @default(now())
 }
 

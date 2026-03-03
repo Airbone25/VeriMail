@@ -7,7 +7,6 @@ import {isDisposable,isFreeProvider,isRoleBased,isValidSyntax,hasMxRecords} from
 
 const router = express.Router()
 
-// Middleware to resolve plan if using session auth
 async function resolvePlan(req, res, next) {
     if (req.orgId && !req.plan) {
         const org = await prisma.organization.findUnique({
@@ -19,14 +18,47 @@ async function resolvePlan(req, res, next) {
     next()
 }
 
-// Support both API Key (External) and Bearer Token (Dashboard Playground)
+async function checkPlanLimit(req, res, next) {
+    if (!req.plan || !req.orgId) return next()
+
+    // If requestLimit is null, it's unlimited
+    if (req.plan.requestLimit === null) return next()
+
+    try {
+        const startOfMonth = new Date()
+        startOfMonth.setDate(1)
+        startOfMonth.setHours(0, 0, 0, 0)
+
+        const count = await prisma.verificationLog.count({
+            where: {
+                org_id: req.orgId,
+                created_at: { gte: startOfMonth }
+            }
+        })
+
+        if (count >= req.plan.requestLimit) {
+            return res.status(403).json({
+                message: "Monthly request limit reached. Please upgrade your plan.",
+                limit: req.plan.requestLimit,
+                usage: count
+            })
+        }
+        next()
+    } catch (error) {
+        next(error)
+    }
+}
+
 const authMiddleware = (req, res, next) => {
     if (req.headers['x-api-key']) {
-        return verifyApiKey(req, res, next)
+        return verifyApiKey(req, res, (err) => {
+            if (err) return next(err)
+            resolvePlan(req, res, () => checkPlanLimit(req, res, next))
+        })
     }
     return verifyAuth(req, res, (err) => {
         if (err) return next(err)
-        orgScope(req, res, () => resolvePlan(req, res, next))
+        orgScope(req, res, () => resolvePlan(req, res, () => checkPlanLimit(req, res, next)))
     })
 }
 
@@ -59,6 +91,27 @@ router.get('/verify', authMiddleware, rateLimiter, async (req, res) => {
         mx &&
         !disposable
 
+    const reason = !mx
+    ? 'no_mx'
+    : disposable
+        ? 'disposable'
+        : valid
+            ? 'deliverable'
+            : 'unknown'
+
+    try {
+        await prisma.verificationLog.create({
+            data: {
+                email,
+                status: reason,
+                is_valid: valid,
+                org_id: req.orgId
+            }
+        })
+    } catch (error) {
+        console.error("Log error:", error)
+    }
+
     return res.json({
         email,
         deliverable: valid,
@@ -68,13 +121,7 @@ router.get('/verify', authMiddleware, rateLimiter, async (req, res) => {
         disposable,
         roleBased,
         freeProvider,
-        reason: !mx
-            ? 'no_mx'
-            : disposable
-                ? 'disposable'
-                : valid
-                    ? 'Email is deliverable'
-                    : 'unknown'
+        reason: reason === 'deliverable' ? 'Email is deliverable' : reason
     })
 })
 
