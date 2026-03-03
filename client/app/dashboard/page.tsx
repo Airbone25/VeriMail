@@ -28,24 +28,6 @@ const item: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
-// Mock chart data
-const usageData = [
-  { day: "Mon", verified: 240, failed: 18 },
-  { day: "Tue", verified: 380, failed: 22 },
-  { day: "Wed", verified: 290, failed: 15 },
-  { day: "Thu", verified: 520, failed: 31 },
-  { day: "Fri", verified: 610, failed: 28 },
-  { day: "Sat", verified: 180, failed: 9 },
-  { day: "Sun", verified: 120, failed: 7 },
-];
-
-const stats = [
-  { label: "Total Verifications", value: "2,340", delta: "+18%", icon: Activity, color: "text-primary" },
-  { label: "Valid Emails", value: "2,158", delta: "+15%", icon: CheckCircle2, color: "text-emerald-500" },
-  { label: "Invalid / Rejected", value: "182", delta: "-3%", icon: XCircle, color: "text-red-500" },
-  { label: "API Calls Today", value: "342", delta: "+42%", icon: Zap, color: "text-amber-500" },
-];
-
 export default function DashboardPage() {
   const { token, logout, _hasHydrated } = useAuthStore();
   const router = useRouter();
@@ -60,6 +42,20 @@ export default function DashboardPage() {
     queryKey: ["org"],
     queryFn: () => orgApi.get().then(res => res.data),
     enabled: !!token && _hasHydrated && user?.role === "OWNER",
+  });
+
+  const { data: statsData, isLoading: isLoadingStats } = useQuery({
+    queryKey: ["org-stats"],
+    queryFn: () => orgApi.getStats().then(res => res.data),
+    enabled: !!token && _hasHydrated && user?.role === "OWNER",
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: recentLogs } = useQuery({
+    queryKey: ["recent-logs"],
+    queryFn: () => orgApi.getRecentLogs().then(res => res.data),
+    enabled: !!token && _hasHydrated && user?.role === "OWNER",
+    refetchInterval: 10000, // Refresh every 10 seconds
   });
 
   useEffect(() => {
@@ -101,6 +97,26 @@ export default function DashboardPage() {
 
   if (!token) return null;
 
+  const stats = [
+    { label: "Total Verifications", value: statsData?.total?.toLocaleString() || "0", icon: Activity, color: "text-primary" },
+    { label: "Valid Emails", value: statsData?.valid?.toLocaleString() || "0", icon: CheckCircle2, color: "text-emerald-500" },
+    { label: "Invalid / Rejected", value: statsData?.invalid?.toLocaleString() || "0", icon: XCircle, color: "text-red-500" },
+    { label: "API Calls Today", value: statsData?.today?.toLocaleString() || "0", icon: Zap, color: "text-amber-500" },
+  ];
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffInSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (diffInSec < 60) return `${diffInSec}s ago`;
+    const diffInMin = Math.floor(diffInSec / 60);
+    if (diffInMin < 60) return `${diffInMin}m ago`;
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const usageLimit = org?.plan?.requestLimit || 1000;
+  const usagePercent = Math.min(100, ((statsData?.total || 0) / usageLimit) * 100);
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8 p-6">
       {/* Header */}
@@ -136,7 +152,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-1 mt-2">
                 <ArrowUpRight className="w-3 h-3 text-emerald-500" />
-                <span className="text-xs text-emerald-600 font-medium">{stat.delta} this week</span>
+                <span className="text-xs text-emerald-600 font-medium">Lifetime stats</span>
               </div>
             </CardContent>
           </Card>
@@ -151,51 +167,58 @@ export default function DashboardPage() {
             <CardDescription>Email verifications over the past 7 days</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-60 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={usageData}>
-                  <defs>
-                    <linearGradient id="colorVerified" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="day" 
-                    tick={{ fontSize: 12 }} 
-                    stroke="hsl(var(--muted-foreground))" 
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }} 
-                    stroke="hsl(var(--muted-foreground))" 
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Area
-                    type="monotone" dataKey="verified" stroke="#4f46e5"
-                    fill="url(#colorVerified)" strokeWidth={2} name="Valid"
-                  />
-                  <Area
-                    type="monotone" dataKey="failed" stroke="#ef4444"
-                    fill="url(#colorFailed)" strokeWidth={2} name="Failed"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="h-[240px] w-full">
+              {statsData?.daily && statsData.daily.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={statsData.daily}>
+                    <defs>
+                      <linearGradient id="colorVerified" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="day" 
+                      tick={{ fontSize: 12 }} 
+                      stroke="hsl(var(--muted-foreground))" 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }} 
+                      stroke="hsl(var(--muted-foreground))" 
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                    />
+                    <Area
+                      type="monotone" dataKey="verified" stroke="#4f46e5"
+                      fill="url(#colorVerified)" strokeWidth={2} name="Valid"
+                    />
+                    <Area
+                      type="monotone" dataKey="failed" stroke="#ef4444"
+                      fill="url(#colorFailed)" strokeWidth={2} name="Failed"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/20">
+                    <Activity className="w-8 h-8 mb-2 opacity-20" />
+                    <p className="text-sm">No activity data yet</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -209,35 +232,33 @@ export default function DashboardPage() {
             <CardTitle className="text-base">Recent Verifications</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { email: "user@gmail.com", status: "valid", time: "2m ago" },
-              { email: "test@mailinator.com", status: "disposable", time: "5m ago" },
-              { email: "invalid@nodomain.xyz", status: "invalid", time: "12m ago" },
-              { email: "contact@stripe.com", status: "valid", time: "18m ago" },
-              { email: "no-reply@tempmail.com", status: "disposable", time: "31m ago" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-2">
-                  {item.status === "valid" ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  ) : item.status === "disposable" ? (
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                  ) : (
-                    <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                  )}
-                  <span className="text-sm font-mono text-muted-foreground">{item.email}</span>
+            {recentLogs && recentLogs.length > 0 ? (
+              recentLogs.map((log: any, i: number) => (
+                <div key={log.id} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0 pb-2">
+                  <div className="flex items-center gap-2">
+                    {log.is_valid ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    )}
+                    <span className="text-sm font-mono text-muted-foreground truncate max-w-[180px] md:max-w-[250px]">
+                        {log.email}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={log.is_valid ? "secondary" : "destructive"}
+                      className="text-[10px] px-1.5 py-0 h-4 capitalize"
+                    >
+                      {log.status}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground">{formatTime(log.created_at)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={item.status === "valid" ? "secondary" : item.status === "disposable" ? "outline" : "destructive"}
-                    className="text-xs"
-                  >
-                    {item.status}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">{item.time}</span>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-sm text-center text-muted-foreground py-8">No recent verifications</p>
+            )}
           </CardContent>
         </Card>
 
@@ -251,28 +272,14 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">API Requests</span>
-                <span className="font-medium">2,340 / 5,000</span>
+                <span className="font-medium">{statsData?.total?.toLocaleString() || 0} / {usageLimit.toLocaleString()}</span>
               </div>
               <div className="h-2 bg-secondary rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-primary rounded-full"
                   initial={{ width: 0 }}
-                  animate={{ width: "46.8%" }}
+                  animate={{ width: `${usagePercent}%` }}
                   transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">API Keys</span>
-                <span className="font-medium">1 / 3</span>
-              </div>
-              <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-orange-500 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: "33%" }}
-                  transition={{ duration: 1, delay: 0.7, ease: "easeOut" }}
                 />
               </div>
             </div>
