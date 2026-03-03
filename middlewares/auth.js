@@ -1,10 +1,12 @@
 import { verifyToken } from "../utils/jwt"
 
 export function verifyAuth(req,res,next){
-    let token = req.headers.authorization
-    if(!token) return res.status(401).json({message: "Token Missing or Invalid"})
+    let authHeader = req.headers.authorization
+    if(!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({message: "Token Missing or Invalid"})
+    }
     
-    if(token.startsWith("Bearer ")) token = token.split(" ")[1]
+    const token = authHeader.split(" ")[1]
     
     try{
         const decoded = verifyToken(token)
@@ -16,7 +18,8 @@ export function verifyAuth(req,res,next){
         }
         next()
     }catch(error){
-        res.json({message: "Invalid missing"})
+        console.error("Auth Token Error:", error.message)
+        res.status(401).json({message: "Invalid or expired token"})
     }
 }
 

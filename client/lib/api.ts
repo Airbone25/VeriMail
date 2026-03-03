@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "@/store/auth";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -7,16 +8,9 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = typeof window !== "undefined" ? localStorage.getItem("verimail-auth") : null;
+  const token = useAuthStore.getState().token;
   if (token) {
-    try {
-      const parsed = JSON.parse(token);
-      if (parsed.state?.token) {
-        config.headers.Authorization = `Bearer ${parsed.state.token}`;
-      }
-    } catch (e) {
-      // ignore
-    }
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
@@ -25,6 +19,24 @@ export const authApi = {
   login: (data: any) => api.post("/auth/login", data),
   signup: (data: any) => api.post("/auth/signup", data),
   getMe: () => api.get("/auth/me"),
+};
+
+export const orgApi = {
+  get: () => api.get("/org"),
+  update: (data: { name: string }) => api.patch("/org", data),
+  getUsers: () => api.get("/org/users"),
+  approveUser: (userId: string) => api.patch(`/org/users/${userId}/approve`),
+  declineUser: (userId: string) => api.patch(`/org/users/${userId}/decline`),
+};
+
+export const apiKeyApi = {
+  getKeys: () => api.get("/api-key"),
+  createKey: () => api.post("/api-key"),
+  revokeKey: (id: string) => api.delete(`/api-key/${id}`),
+};
+
+export const verifyApi = {
+  verifyEmail: (email: string) => api.get(`/v1/email/verify?email=${encodeURIComponent(email)}`),
 };
 
 export default api;

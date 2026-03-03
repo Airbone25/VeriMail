@@ -6,9 +6,24 @@ const router = express.Router()
 
 router.get('/',verifyAuth,orgScope,verifyOwner,async(req,res)=>{
     const orgDetails = await prisma.organization.findFirst({
-        where: {id: req.orgId}
+        where: {id: req.orgId},
+        include: {plan: true}
     })
     res.json(orgDetails)
+})
+
+router.patch('/', verifyAuth, orgScope, verifyOwner, async (req, res) => {
+    const { name } = req.body
+    if (!name) return res.status(400).json({ message: "Organization name is required" })
+    try {
+        const updatedOrg = await prisma.organization.update({
+            where: { id: req.orgId },
+            data: { name: name.trim() }
+        })
+        res.json(updatedOrg)
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" })
+    }
 })
 
 router.get('/users', verifyAuth, orgScope, verifyOwner, async (req, res) => {

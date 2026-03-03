@@ -99,24 +99,29 @@ router.get('/me', verifyAuth, async (req, res) => {
                 where: { id: req.user.user_id }, 
                 select: { id: true, email: true, role: true ,org_id: true, status: true } 
             })
-            if (!data) return res.json({ message: "User Not Found" })
+            if (!data) return null
             
-            const orgName = await tx.organization.findUnique({
+            const org = await tx.organization.findUnique({
                 where: {id: data.org_id},
                 select: {name: true}
             })
 
-            return {data,orgName}
+            return {data, org}
         })
+
+        if (!result || !result.data) {
+            return res.status(401).json({ message: "User Not Found" })
+        }
 
         res.json({
             id: result.data.id,
             email: result.data.email,
             role: result.data.role,
             status: result.data.status,
-            orgName: result.orgName.name
+            orgName: result.org?.name || "N/A"
         })
     } catch (error) {
+        console.error(error)
         res.status(500).json({ message: "Internal Server Error" })
     }
 })

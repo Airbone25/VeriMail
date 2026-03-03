@@ -1,11 +1,36 @@
 import express from 'express'
 import { verifyApiKey } from '../middlewares/apiKey'
 import { rateLimiter } from '../middlewares/rateLimiter'
+import { verifyAuth, orgScope } from '../middlewares/auth'
+import { prisma } from '../lib/prisma'
 import {isDisposable,isFreeProvider,isRoleBased,isValidSyntax,hasMxRecords} from '../utils/email'
 
 const router = express.Router()
 
-router.get('/verify', verifyApiKey, rateLimiter, async (req, res) => {
+// Middleware to resolve plan if using session auth
+async function resolvePlan(req, res, next) {
+    if (req.orgId && !req.plan) {
+        const org = await prisma.organization.findUnique({
+            where: { id: req.orgId },
+            include: { plan: true }
+        })
+        req.plan = org?.plan
+    }
+    next()
+}
+
+// Support both API Key (External) and Bearer Token (Dashboard Playground)
+const authMiddleware = (req, res, next) => {
+    if (req.headers['x-api-key']) {
+        return verifyApiKey(req, res, next)
+    }
+    return verifyAuth(req, res, (err) => {
+        if (err) return next(err)
+        orgScope(req, res, () => resolvePlan(req, res, next))
+    })
+}
+
+router.get('/verify', authMiddleware, rateLimiter, async (req, res) => {
     const email = req.query.email
 
     if (!email || typeof email !== 'string') {
