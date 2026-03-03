@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VeriMail - Email Verification",
   description: "High-performance email verification for modern platforms.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
