@@ -1,6 +1,6 @@
 import express from 'express'
-import { prisma } from '../lib/prisma'
-import { orgScope, verifyAuth, verifyOwner } from '../middlewares/auth'
+import { prisma } from '../lib/prisma.js'
+import { orgScope, verifyAuth, verifyOwner } from '../middlewares/auth.js'
 import crypto from 'crypto'
 
 const router = express.Router()

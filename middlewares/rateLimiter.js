@@ -1,4 +1,4 @@
-import redis from '../lib/redis'
+import redis from '../lib/redis.js'
 
 export async function rateLimiter(req, res, next) {
   try {

@@ -1,9 +1,9 @@
 import express from 'express'
-import { verifyApiKey } from '../middlewares/apiKey'
-import { rateLimiter } from '../middlewares/rateLimiter'
-import { verifyAuth, orgScope } from '../middlewares/auth'
-import { prisma } from '../lib/prisma'
-import {isDisposable,isFreeProvider,isRoleBased,isValidSyntax,hasMxRecords} from '../utils/email'
+import { verifyApiKey } from '../middlewares/apiKey.js'
+import { rateLimiter } from '../middlewares/rateLimiter.js'
+import { verifyAuth, orgScope } from '../middlewares/auth.js'
+import { prisma } from '../lib/prisma.js'
+import {isDisposable,isFreeProvider,isRoleBased,isValidSyntax,hasMxRecords} from '../utils/email.js'
 
 const router = express.Router()
 

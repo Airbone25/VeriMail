@@ -1,6 +1,6 @@
 import crypto from 'crypto'
-import { prisma } from '../lib/prisma'
-import redis from '../lib/redis'
+import { prisma } from '../lib/prisma.js'
+import redis from '../lib/redis.js'
 
 export async function verifyApiKey(req, res, next) {
   try {

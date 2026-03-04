@@ -1,8 +1,8 @@
 import express from 'express'
-import { prisma } from "../lib/prisma"
+import { prisma } from "../lib/prisma.js"
 import bcrypt from "bcrypt"
-import { signToken } from "../utils/jwt"
-import { verifyAuth } from '../middlewares/auth'
+import { signToken } from "../utils/jwt.js"
+import { verifyAuth } from '../middlewares/auth.js'
 
 const router = express.Router()
 
