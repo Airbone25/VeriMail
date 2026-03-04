@@ -82,10 +82,10 @@ const pricing = [
     name: "Free",
     price: "$0",
     period: "forever",
-    description: "Perfect for side projects and testing.",
+    description: "Perfect for side projects and individual developers.",
     features: [
-      "5,000 verifications/month",
-      "3 API keys",
+      "1,000 verifications/month",
+      "1 Shared API Key",
       "Syntax + MX checks",
       "Basic disposable detection",
       "Community support",
@@ -93,6 +93,7 @@ const pricing = [
     cta: "Get started free",
     href: "/auth/signup",
     highlighted: false,
+    disabled: false,
   },
   {
     name: "Pro",
@@ -101,32 +102,36 @@ const pricing = [
     description: "For teams with serious email deliverability needs.",
     features: [
       "100,000 verifications/month",
-      "Unlimited API keys",
+      "Individual User Keys (Up to 10)",
       "Advanced disposable detection",
       "Bulk verification",
-      "Webhooks",
       "Priority support",
       "SLA guarantee",
     ],
-    cta: "Start Pro trial",
-    href: "/auth/signup",
+    cta: "Coming Soon",
+    href: "#",
     highlighted: true,
+    disabled: true,
   },
 ];
 
 const codeSnippet = `// Verify an email with VeriMail
 const res = await fetch(
-  "https://api.verimail.io/v1/email/verify?email=user@example.com",
+  "https://verimail.vercel.app/v1/email/verify?email=test@mail.com",
   { headers: { "x-api-key": "vm_sk_..." } }
 );
 
 const data = await res.json();
 // {
-//   valid: true,
-//   format_valid: true,
-//   mx_found: true,
-//   disposable: false,
-//   score: 96
+//   "email": "test@mail.com",
+//   "deliverable": true,
+//   "syntax": true,
+//   "domain": true,
+//   "mx": true,
+//   "disposable": false,
+//   "roleBased": false,
+//   "freeProvider": false,
+//   "reason": "Email is deliverable"
 // }`;
 
 export default function HomePage() {
@@ -144,7 +149,7 @@ export default function HomePage() {
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-            <a href="#docs" className="hover:text-foreground transition-colors">Docs</a>
+            {/* <a href="#docs" className="hover:text-foreground transition-colors">Docs</a> */}
           </div>
 
           <div className="flex items-center gap-3">
@@ -210,7 +215,7 @@ export default function HomePage() {
             </motion.div>
 
             <motion.p variants={fadeUp} className="mt-4 text-xs text-muted-foreground">
-              No credit card required · 5,000 free checks/month
+              No credit card required · 1,000 free checks/month
             </motion.p>
           </motion.div>
 
@@ -232,19 +237,6 @@ export default function HomePage() {
               </pre>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      <section className="py-12 border-y border-border bg-secondary/30">
-        <div className="max-w-6xl mx-auto px-6">
-          <p className="text-center text-xs text-muted-foreground uppercase tracking-widest font-medium mb-8">
-            Used by teams at
-          </p>
-          <div className="flex items-center justify-center gap-8 md:gap-16 flex-wrap opacity-40">
-            {["Stripe", "Vercel", "Linear", "Notion", "Figma"].map((name) => (
-              <span key={name} className="font-display font-bold text-lg text-foreground">{name}</span>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -301,7 +293,7 @@ export default function HomePage() {
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
                   <step.icon className="w-6 h-6 text-primary" />
                 </div>
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 font-display text-xs font-bold text-primary/40">{step.step}</span>
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-6 font-display text-xs font-bold text-primary/40">{step.step}</span>
                 <h3 className="font-display font-semibold text-lg mb-2">{step.title}</h3>
                 <p className="text-sm text-muted-foreground">{step.desc}</p>
                 {i < 2 && (
@@ -334,10 +326,10 @@ export default function HomePage() {
               <motion.div
                 key={plan.name}
                 variants={fadeUp}
-                whileHover={{ y: -4 }}
+                whileHover={!plan.disabled ? { y: -4 } : {}}
                 transition={{ duration: 0.2 }}
               >
-                <Card className={`relative h-full ${plan.highlighted ? "border-primary shadow-lg shadow-primary/10" : ""}`}>
+                <Card className={`relative h-full ${plan.highlighted ? "border-primary shadow-lg shadow-primary/10" : ""} ${plan.disabled ? "opacity-80" : ""}`}>
                   {plan.highlighted && (
                     <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                       <Badge className="bg-primary text-primary-foreground px-3 shadow">Most Popular</Badge>
@@ -362,15 +354,26 @@ export default function HomePage() {
                       ))}
                     </ul>
 
-                    <Link href={plan.href} className="block">
+                    {plan.disabled ? (
                       <Button
-                        className="w-full"
-                        variant={plan.highlighted ? "default" : "outline"}
+                        className="w-full cursor-not-allowed"
+                        variant="secondary"
                         size="lg"
+                        disabled
                       >
                         {plan.cta}
                       </Button>
-                    </Link>
+                    ) : (
+                      <Link href={plan.href} className="block">
+                        <Button
+                          className="w-full"
+                          variant={plan.highlighted ? "default" : "outline"}
+                          size="lg"
+                        >
+                          {plan.cta}
+                        </Button>
+                      </Link>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
