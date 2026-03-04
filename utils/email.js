@@ -1,5 +1,5 @@
 import dns from 'dns/promises'
-import disposableDomains from './disposableDomains.json'
+import disposableDomains from './disposableDomains.json' with { type: 'json' }
 
 const roles = [
   'admin',
