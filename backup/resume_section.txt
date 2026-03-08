@@ -1,0 +1,17 @@
+\begin{twocolentry}{
+    \textit{\href{https://github.com/Airbone25/multi-tenant-subscription-model}{GitHub Repo}}}
+    
+    {\textbf{VeriMail: Email Verification SaaS}}
+
+    {\textit{\href{https://verimail.vercel.app/}{Deployed Link}}}
+\end{twocolentry}
+
+\vspace{0.10 cm}
+\begin{onecolentry}
+    \begin{highlights}
+        \item Architected VeriMail, a high-volume email verification platform featuring multi-tenant data isolation and a credit-based subscription model.
+        \item Implemented Redis-backed rate limiting and secure API key management to enforce verification quotas and ensure high service availability.
+        \item Developed a modern dashboard for real-time monitoring of verification logs, organizational usage analytics, and subscription tracking.
+        \item \textbf{Tools Used: Next.js 16, Express.js, Prisma, PostgreSQL, Redis, JWT, Tailwind CSS 4}
+    \end{highlights}
+\end{onecolentry}
