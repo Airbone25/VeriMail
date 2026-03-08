@@ -1,20 +1,20 @@
-# Multi-Tenant Subscription Model
+# VeriMail: Multi-Tenant Email Verification Platform
 
-A robust, full-stack multi-tenant subscription-based API platform designed for scalability and performance. This project provides a complete foundation for building SaaS applications that require organizational isolation, subscription management, and API key-based access control.
+VeriMail is a robust, full-stack multi-tenant email verification API platform designed for high-volume validation and scalability. This project provides a complete foundation for building email verification services that require organizational isolation, subscription management, and secure API key access.
 
 ## 🚀 Features
 
 ### Core Infrastructure
-- **Multi-Tenancy**: Complete isolation of data between organizations.
-- **Subscription Tiers**: Flexible plan system with configurable request limits, rate limits, and API key quotas.
+- **Multi-Tenancy**: Complete isolation of verification logs and data between organizations.
+- **Subscription Tiers**: Flexible plan system with configurable request limits (verification credits), rate limits, and API key quotas.
 - **Role-Based Access Control (RBAC)**: Distinct permissions for `OWNER` and `MEMBER` roles.
 - **Modern Tech Stack**: Built with Next.js 16, Express, Prisma, and Redis.
 
-### Security & Authentication
+### Email Verification & Security
+- **Verification Logging**: Detailed tracking of every email verification attempt including status and validity.
 - **JWT-based Authentication**: Secure user sessions and cross-origin resource sharing.
-- **Email Status Management**: Workflow-driven user onboarding with `ACTIVE`, `PENDING`, and `DECLINED` states.
-- **API Key Management**: Organizations can generate and manage multiple API keys for programmatic access.
-- **Rate Limiting**: Redis-backed rate limiting to protect services and enforce subscription tiers.
+- **API Key Management**: Organizations can generate and manage multiple API keys for programmatic verification access.
+- **Rate Limiting**: Redis-backed rate limiting to protect validation services and enforce subscription tiers.
 
 ### Frontend Dashboard
 - **Modern UI/UX**: Responsive dashboard built with Tailwind CSS 4 and Radix UI primitives.
@@ -98,7 +98,7 @@ Detailed API documentation and endpoint descriptions can be found in the `routes
 - `/auth`: Registration, login, and session management.
 - `/org`: Organization settings and member management.
 - `/api-keys`: CRUD operations for organization API keys.
-- `/product`: Subscription-protected business logic endpoints.
+- `/product`: Email verification endpoints protected by subscription tiers.
 
 ## 📄 License
 This project is licensed under the ISC License.
