@@ -68,12 +68,8 @@ export default function DashboardPage() {
 
         try {
           const res = await authApi.getMe();
-          if (res.data.status === "PENDING") {
+          if (res.data.status === "PENDING" || res.data.status === "DECLINED") {
             router.push("/auth/pending");
-          } else if (res.data.status === "DECLINED") {
-            toast.error("Account declined", { description: "Please contact your administrator." });
-            logout();
-            router.push("/auth/login");
           }
         } catch (err) {
           logout();

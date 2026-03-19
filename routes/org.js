@@ -105,7 +105,27 @@ router.patch('/users/:userId/approve', verifyAuth, orgScope, verifyOwner, async 
             data: { status: "ACTIVE" }
         })
 
-        res.json({ message: "User approved successfully" })
+        res.json({ message: "User access restored successfully" })
+    } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+})
+
+router.delete('/users/:userId', verifyAuth, orgScope, verifyOwner, async (req, res) => {
+    const { userId } = req.params
+    try {
+        const user = await prisma.user.findFirst({
+            where: { id: userId, org_id: req.orgId }
+        })
+
+        if (!user) return res.status(404).json({ message: "User not found in your organization" })
+        if (user.role === "OWNER") return res.status(403).json({ message: "Cannot remove an owner" })
+
+        await prisma.user.delete({
+            where: { id: userId }
+        })
+
+        res.json({ message: "User removed from organization" })
     } catch (error) {
         res.status(500).json({ message: "Internal Server Error" })
     }
@@ -127,7 +147,7 @@ router.patch('/users/:userId/decline', verifyAuth, orgScope, verifyOwner, async 
             data: { status: "DECLINED" }
         })
 
-        res.json({ message: "User declined successfully" })
+        res.json({ message: "User access revoked successfully" })
     } catch (error) {
         res.status(500).json({ message: "Internal Server Error" })
     }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { UserCheck, UserX, Loader2, ArrowLeft, Users } from "lucide-react";
+import { UserCheck, UserX, Loader2, ArrowLeft, Users, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -42,7 +42,7 @@ export default function ManageUsersPage() {
     mutationFn: (userId: string) => orgApi.approveUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
-      toast.success("User approved successfully");
+      toast.success("User access restored");
     },
     onError: () => toast.error("Failed to approve user"),
   });
@@ -51,9 +51,18 @@ export default function ManageUsersPage() {
     mutationFn: (userId: string) => orgApi.declineUser(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["org-users"] });
-      toast.success("User declined successfully");
+      toast.success("User access revoked");
     },
-    onError: () => toast.error("Failed to decline user"),
+    onError: () => toast.error("Failed to revoke access"),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (userId: string) => orgApi.removeUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["org-users"] });
+      toast.success("User removed from organization");
+    },
+    onError: () => toast.error("Failed to remove user"),
   });
 
   if (isLoading || isLoadingMe) {
@@ -135,6 +144,40 @@ export default function ManageUsersPage() {
                           >
                             <UserX className="w-3.5 h-3.5 mr-1" />
                             Decline
+                          </Button>
+                          <Button 
+                            size="xs" 
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-red-600"
+                            onClick={() => removeMutation.mutate(user.id)}
+                            disabled={removeMutation.isPending}
+                            title="Remove from Org"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                      {user.status === "DECLINED" && (
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            size="xs" 
+                            variant="outline" 
+                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                            onClick={() => approveMutation.mutate(user.id)}
+                            disabled={approveMutation.isPending}
+                          >
+                            <UserCheck className="w-3.5 h-3.5 mr-1" />
+                            Restore
+                          </Button>
+                          <Button 
+                            size="xs" 
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-red-600"
+                            onClick={() => removeMutation.mutate(user.id)}
+                            disabled={removeMutation.isPending}
+                            title="Remove from Org"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       )}

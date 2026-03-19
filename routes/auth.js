@@ -126,6 +126,103 @@ router.get('/me', verifyAuth, async (req, res) => {
     }
 })
 
+router.patch('/update-org', verifyAuth, async (req, res) => {
+    const { org_name } = req.body
+    if (!org_name) return res.status(400).json({ message: "Organization name is required" })
 
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.user_id }
+        })
+
+        if (!user) return res.status(404).json({ message: "User not found" })
+        if (user.status === "ACTIVE") return res.status(403).json({ message: "Cannot change organization once active" })
+
+        const result = await prisma.$transaction(async (tx) => {
+            let org = await tx.organization.findFirst({
+                where: { name: org_name.trim() }
+            })
+
+            let role = "MEMBER"
+            let status = "PENDING"
+
+            if (!org) {
+                const defaultPlan = await tx.plan.findUnique({ where: { name: "Free" } })
+                if (!defaultPlan) throw new Error("No Default Plan")
+
+                org = await tx.organization.create({
+                    data: {
+                        name: org_name.trim(),
+                        plan_id: defaultPlan.id
+                    }
+                })
+                role = "OWNER"
+                status = "ACTIVE"
+            }
+
+            const updatedUser = await tx.user.update({
+                where: { id: user.id },
+                data: {
+                    org_id: org.id,
+                    role: role,
+                    status: status
+                }
+            })
+
+            return { user: updatedUser, org }
+        })
+
+        // Generate a new token with updated org_id and role
+        const token = signToken({
+            user_id: result.user.id,
+            org_id: result.org.id,
+            role: result.user.role,
+            status: result.user.status
+        })
+
+        res.json({
+            message: result.user.status === "PENDING" ? "Membership request updated." : "Organization changed successfully.",
+            token: token,
+            status: result.user.status
+        })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+})
+
+
+
+router.patch('/request-access', verifyAuth, async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.user_id }
+        })
+
+        if (!user) return res.status(404).json({ message: "User not found" })
+        if (user.status !== "DECLINED") return res.status(400).json({ message: "Can only request access if previously declined" })
+
+        const updatedUser = await prisma.user.update({
+            where: { id: user.id },
+            data: { status: "PENDING" }
+        })
+
+        const token = signToken({
+            user_id: updatedUser.id,
+            org_id: updatedUser.org_id,
+            role: updatedUser.role,
+            status: updatedUser.status
+        })
+
+        res.json({
+            message: "Access request sent successfully",
+            token: token,
+            status: updatedUser.status
+        })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+})
 
 export default router

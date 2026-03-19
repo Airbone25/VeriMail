@@ -19,6 +19,8 @@ export const authApi = {
   login: (data: any) => api.post("/auth/login", data),
   signup: (data: any) => api.post("/auth/signup", data),
   getMe: () => api.get("/auth/me"),
+  updateOrg: (data: { org_name: string }) => api.patch("/auth/update-org", data),
+  requestAccess: () => api.patch("/auth/request-access"),
 };
 
 export const orgApi = {
@@ -29,6 +31,7 @@ export const orgApi = {
   getUsers: () => api.get("/org/users"),
   approveUser: (userId: string) => api.patch(`/org/users/${userId}/approve`),
   declineUser: (userId: string) => api.patch(`/org/users/${userId}/decline`),
+  removeUser: (userId: string) => api.delete(`/org/users/${userId}`),
 };
 
 export const apiKeyApi = {
