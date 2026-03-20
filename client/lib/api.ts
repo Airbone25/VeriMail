@@ -21,6 +21,7 @@ export const authApi = {
   getMe: () => api.get("/auth/me"),
   updateOrg: (data: { org_name: string }) => api.patch("/auth/update-org", data),
   requestAccess: () => api.patch("/auth/request-access"),
+  verifyEmail: (data: { email: string, token: string }) => api.post("/auth/verify-email", data),
 };
 
 export const orgApi = {

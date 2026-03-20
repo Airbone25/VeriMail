@@ -3,6 +3,8 @@ import { prisma } from "../lib/prisma.js"
 import bcrypt from "bcrypt"
 import { signToken } from "../utils/jwt.js"
 import { verifyAuth } from '../middlewares/auth.js'
+import crypto from 'crypto'
+import { sendVerificationEmail } from '../utils/mailer.js'
 
 const router = express.Router()
 
@@ -39,26 +41,91 @@ router.post('/signup', async (req, res) => {
                     email: email,
                     password: hashPass,
                     role: role,
-                    status: status,
+                    status: "UNVERIFIED",
+                    isEmailVerified: false,
                     org_id: org.id
                 }
             })
-            return { user, org }
+            
+            const verificationToken = crypto.randomInt(100000, 999999).toString()
+            await tx.verificationToken.create({
+                data: {
+                    token: verificationToken,
+                    user_id: user.id,
+                    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+                }
+            })
+
+            return { user, org, verificationToken }
         })
+
+        try {
+            await sendVerificationEmail(email, result.verificationToken)
+        } catch (mailError) {
+            console.error("Failed to send verification email:", mailError)
+        }
 
         const token = signToken({
             user_id: result.user.id,
             org_id: result.org.id,
             role: result.user.role,
-            status: result.user.status
+            status: "UNVERIFIED"
         })
 
         res.status(201).json({
-            message: result.user.status === "PENDING" ? "Membership request sent. Waiting for approval." : "Signup Successful",
+            message: "Signup Successful. Please verify your email.",
             token: token,
-            status: result.user.status
+            status: "UNVERIFIED"
         })
 
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: "Internal Server Error" })
+    }
+})
+
+router.post('/verify-email', async (req, res) => {
+    const { token, email } = req.body
+    if (!token || !email) return res.status(400).json({ message: "Missing token or email" })
+
+    try {
+        const user = await prisma.user.findUnique({ where: { email } })
+        if (!user) return res.status(404).json({ message: "User not found" })
+
+        const vToken = await prisma.verificationToken.findFirst({
+            where: {
+                token,
+                user_id: user.id,
+                expires_at: { gte: new Date() }
+            }
+        })
+
+        if (!vToken) return res.status(400).json({ message: "Invalid or expired token" })
+
+        // Update user status based on whether they were owner or member
+        // For simplicity, we'll re-check if they own the org or if they should be pending
+        const org = await prisma.organization.findUnique({ where: { id: user.org_id }, include: { Users: true } })
+        
+        let newStatus = "PENDING"
+        if (user.role === "OWNER") newStatus = "ACTIVE"
+
+        await prisma.$transaction([
+            prisma.user.update({
+                where: { id: user.id },
+                data: { isEmailVerified: true, status: newStatus }
+            }),
+            prisma.verificationToken.delete({ where: { id: vToken.id } })
+        ])
+
+        // Generate new JWT with updated status
+        const jwtToken = signToken({
+            user_id: user.id,
+            org_id: user.org_id,
+            role: user.role,
+            status: newStatus
+        })
+
+        res.json({ message: "Email verified successfully", token: jwtToken, status: newStatus })
     } catch (error) {
         console.error(error)
         res.status(500).json({ message: "Internal Server Error" })
@@ -172,7 +239,6 @@ router.patch('/update-org', verifyAuth, async (req, res) => {
             return { user: updatedUser, org }
         })
 
-        // Generate a new token with updated org_id and role
         const token = signToken({
             user_id: result.user.id,
             org_id: result.org.id,

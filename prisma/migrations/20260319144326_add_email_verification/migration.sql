@@ -1,0 +1,1 @@
+-- Migration catch-up after manual fix for Postgres enum limitation.

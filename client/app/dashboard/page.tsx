@@ -68,6 +68,10 @@ export default function DashboardPage() {
 
         try {
           const res = await authApi.getMe();
+          if (res.data.status === "UNVERIFIED") {
+            router.push("/auth/verify");
+            return;
+          }
           if (res.data.status === "PENDING" || res.data.status === "DECLINED") {
             router.push("/auth/pending");
           }
